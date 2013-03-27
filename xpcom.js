@@ -10,8 +10,7 @@
 const { Cc, Ci, Cr, Cm } = require('chrome')
 const { Base } = require('./selfish')
 
-const { generateUUID } = Cc["@mozilla.org/uuid-generator;1"].
-                         getService(Ci.nsIUUIDGenerator);
+const { uuid } = require('sdk/util/uuid')
 const { registerFactory, unregisterFactory } =
       Cm.QueryInterface(Ci.nsIComponentRegistrar)
 
@@ -20,7 +19,7 @@ function equals(value) this.equals(value)
 exports.Component = Base.extend({
   classDescription: 'Jetpack generated class',
   initialize: function initialize() {
-    this.classID = generateUUID()
+    this.classID = uuid()
   },
   QueryInterface: function QueryInterface(iid) {
     var implementsIntrface = iid.equals(Ci.nsISupports) ||
