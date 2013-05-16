@@ -1,14 +1,17 @@
 /* vim:set ts=2 sw=2 sts=2 expandtab */
+/* kate: space-indent on; indent-width 2; */
 /*jshint asi: true undef: true es5: true node: true devel: true browser: true
          forin: true latedef: false globalstrict: true */
 /*global define: true */
 
 'use strict';
 
-const { Cc, Ci, CC } = require('chrome')
+const { Cc, Ci, Cu, CC } = require('chrome')
 const { Component } = require('./xpcom')
 const { Base } = require('./selfish')
 const { CustomURL } = require('./uri')
+
+const {XPCOMUtils} = Cu.import("resource://gre/modules/XPCOMUtils.jsm")
 
 const StandardURL = CC('@mozilla.org/network/standard-url;1',
                        'nsIStandardURL', 'init')
@@ -19,6 +22,8 @@ const SecurityManager = CC('@mozilla.org/scriptsecuritymanager;1',
                      'nsIScriptSecurityManager')()
 const Principal = SecurityManager.getSimpleCodebasePrincipal ? SecurityManager.getSimpleCodebasePrincipal.bind(SecurityManager) :
                                                                SecurityManager.getCodebasePrincipal.bind(SecurityManager);
+const ThreadManager = Cc['@mozilla.org/thread-manager;1'].
+                      getService(Ci.nsIThreadManager);
 const IOService = Cc['@mozilla.org/network/io-service;1'].
                   getService(Ci.nsIIOService)
 const URI = IOService.newURI.bind(IOService)
@@ -29,6 +34,7 @@ const Response = Base.extend({
     this.uri = this.originalURI = this.principalURI = uri
     this._write = stream.write.bind(stream)
     this._close = stream.close.bind(stream)
+    this._asyncWait = stream.asyncWait.bind(stream)
     this.contentLength = -1
     this.contentType = ''
   },
@@ -38,6 +44,23 @@ const Response = Base.extend({
   end: function end(content) {
     if (content) this.write(content)
     this._close()
+  },
+  writeFrom: function(data, end=false) {
+    let self = this;
+    function writeNextChunk() {
+      self._asyncWait({
+        QueryInterface: XPCOMUtils.generateQI([Ci.nsIOutputStreamCallback]),
+        onOutputStreamReady: function() { try {
+          var str = data.next()
+          self.write(str, str.length)
+          writeNextChunk()
+        } catch (e if e instanceof StopIteration) {
+          if (end)
+            self.end()
+        } }
+      }, 0, 0, ThreadManager.currentThread)
+    }
+    writeNextChunk()
   }
 })
 
