@@ -46,18 +46,20 @@ const Response = Base.extend({
     this._close()
   },
   writeFrom: function(data, end=false) {
-    let self = this;
+    let self = this
     function writeNextChunk() {
       self._asyncWait({
         QueryInterface: XPCOMUtils.generateQI([Ci.nsIOutputStreamCallback]),
-        onOutputStreamReady: function() { try {
-          var str = data.next()
-          self.write(str, str.length)
-          writeNextChunk()
-        } catch (e if e instanceof StopIteration) {
-          if (end)
+        onOutputStreamReady: function() {
+          var {value, done} = data.next()
+          //console.log(value, done, end)
+          if (typeof value !== 'undefined')
+            self.write(value, value.length)
+          if (!done)
+            writeNextChunk()
+          else if (end)
             self.end()
-        } }
+        }
       }, 0, 0, ThreadManager.currentThread)
     }
     writeNextChunk()
