@@ -14,10 +14,6 @@
   "bugs": {
     "web": "http://github.com/Gozala/jetpack-protocol/issues/"
   },
-  "dependencies": {
-    "addon-kit": ">=0.9.0",
-    "api-utils": ">=0.9.0"
-  },
   "main": "./index.js",
   "licenses": [{
     "type" : "MIT",
